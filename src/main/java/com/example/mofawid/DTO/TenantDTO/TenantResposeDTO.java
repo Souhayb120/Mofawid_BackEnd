@@ -1,8 +1,11 @@
 package com.example.mofawid.DTO.TenantDTO;
 
+import lombok.Data;
+
 import java.time.Instant;
 import java.util.UUID;
 
+@Data
 public class TenantResposeDTO {
     private UUID id;
 

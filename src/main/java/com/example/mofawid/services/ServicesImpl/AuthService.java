@@ -2,6 +2,7 @@ package com.example.mofawid.services.ServicesImpl;
 
 import com.example.mofawid.DTO.UserDTO.AuthResponse;
 import com.example.mofawid.DTO.UserDTO.UserLoginDTO;
+import com.example.mofawid.DTO.UserDTO.UserRegisterDTO;
 import com.example.mofawid.config.JwtUtil;
 import com.example.mofawid.models.User;
 import com.example.mofawid.repositories.UserRepo;
@@ -19,6 +20,31 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+    }
+
+    public void register(UserRegisterDTO request) {
+
+        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        User user = new User();
+
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(
+                passwordEncoder.encode(request.getPassword())
+        );
+
+        user.setNom(request.getNom());
+        user.setPrenom(request.getPrenom());
+        user.setPhone(request.getPhone());
+
+        user.setRole(request.getRole());
+
+        user.setActive(true);
+
+        userRepository.save(user);
     }
 
     public AuthResponse login(UserLoginDTO dto) {

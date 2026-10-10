@@ -8,9 +8,11 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface TenantMapper {
+
     Tenant toEntity(TenantRequestDTO dto);
 
     TenantResposeDTO toResponseDto(Tenant tenant);
+
     void updateEntityFromDto(
             TenantRequestDTO dto,
             @MappingTarget Tenant tenant

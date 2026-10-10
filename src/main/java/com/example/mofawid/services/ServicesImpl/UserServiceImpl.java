@@ -4,6 +4,7 @@ package com.example.mofawid.services.ServicesImpl;
 import com.example.mofawid.DTO.UserDTO.UserRegisterDTO;
 import com.example.mofawid.DTO.UserDTO.UserResposeDTO;
 import com.example.mofawid.DTO.UserDTO.UserUpdateDTO;
+import com.example.mofawid.Enums.Role;
 import com.example.mofawid.mapper.UserMapper;
 import com.example.mofawid.models.User;
 import com.example.mofawid.repositories.UserRepo;
@@ -37,17 +38,43 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserResposeDTO createUser(UserRegisterDTO dto) {
 
-        User user = userMapper.toEntity(dto);
         User currentUser = getCurrentUser();
+
+
+        if (dto.getRole() != Role.ASSISTANT
+                && dto.getRole() != Role.COLLABORATEUR) {
+
+            throw new RuntimeException(
+                    "Admin can only create ASSISTANT or COLLABORATEUR"
+            );
+        }
+
+
+        if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
+            throw new RuntimeException("Username already exists");
+        }
+
+
+        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
+        }
+
+
+        User user = userMapper.toEntity(dto);
+
+
         user.setTenant(currentUser.getTenant());
+
+
         user.setPassword(
                 passwordEncoder.encode(dto.getPassword())
         );
 
+        user.setActive(true);
+
         User savedUser = userRepository.save(user);
 
         return userMapper.toResponseDto(savedUser);
-
     }
 
     @Override
@@ -101,6 +128,14 @@ public class UserServiceImpl implements UserService {
                 .findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
+
+        if (dto.getRole() != Role.ASSISTANT
+                && dto.getRole() != Role.COLLABORATEUR) {
+
+            throw new RuntimeException(
+                    "Admin can only assign ASSISTANT or COLLABORATEUR roles"
+            );
+        }
 
         user.setUsername(dto.getUsername());
         user.setEmail(dto.getEmail());

@@ -30,6 +30,5 @@ public class UserRegisterDTO {
     @NotNull
     private Role role;
 
-    // Used only when role = ADMIN
-    private String licenceNumber;
+
 }

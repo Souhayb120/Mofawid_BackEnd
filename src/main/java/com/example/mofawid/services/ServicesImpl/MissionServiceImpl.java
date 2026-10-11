@@ -2,6 +2,7 @@ package com.example.mofawid.services.ServicesImpl;
 
 import com.example.mofawid.DTO.MissionDTO.MissionRequestDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionResponseDTO;
+import com.example.mofawid.Enums.CaseStatus;
 import com.example.mofawid.Enums.MissionStatus;
 import com.example.mofawid.Enums.Role;
 import com.example.mofawid.mapper.MissionMapper;
@@ -39,7 +40,6 @@ public class MissionServiceImpl implements MissionService {
         this.userRepository = userRepository;
         this.missionMapper = missionMapper;
     }
-
     @Override
     public MissionResponseDTO createMission(MissionRequestDTO dto) {
 
@@ -68,17 +68,27 @@ public class MissionServiceImpl implements MissionService {
             );
         }
 
-        Mission mission = missionMapper.toEntity(dto);
+        Mission mission =
+                missionMapper.toEntity(dto);
 
         mission.setCaseEntity(caseEntity);
         mission.setAssignedTo(collaborateur);
         mission.setAssignedBy(currentUser);
         mission.setStatus(MissionStatus.ASSIGNED);
 
+        // Update Case status
+        caseEntity.setCaseStatus(
+                CaseStatus.ASSIGNED
+        );
+
+        caseRepository.save(caseEntity);
+
         Mission savedMission =
                 missionRepository.save(mission);
 
-        return missionMapper.toResponseDto(savedMission);
+        return missionMapper.toResponseDto(
+                savedMission
+        );
     }
 
     @Override
@@ -156,7 +166,8 @@ public class MissionServiceImpl implements MissionService {
 
         User currentUser = getCurrentUser();
 
-        UUID tenantId = currentUser.getTenant().getId();
+        UUID tenantId =
+                currentUser.getTenant().getId();
 
         Mission mission = missionRepository
                 .findByIdAndCaseEntityTenantId(
@@ -176,7 +187,8 @@ public class MissionServiceImpl implements MissionService {
             );
         }
 
-        if (mission.getStatus() != MissionStatus.ASSIGNED) {
+        if (mission.getStatus()
+                != MissionStatus.ASSIGNED) {
 
             throw new RuntimeException(
                     "Only an ASSIGNED mission can be started"
@@ -186,6 +198,16 @@ public class MissionServiceImpl implements MissionService {
         mission.setStatus(
                 MissionStatus.IN_PROGRESS
         );
+
+        // Update the Case too
+        Case caseEntity =
+                mission.getCaseEntity();
+
+        caseEntity.setCaseStatus(
+                CaseStatus.IN_PROGRESS
+        );
+
+        caseRepository.save(caseEntity);
 
         Mission updatedMission =
                 missionRepository.save(mission);

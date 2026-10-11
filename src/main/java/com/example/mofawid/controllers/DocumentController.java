@@ -79,4 +79,36 @@ public class DocumentController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/api/cases/{caseId}/ai-draft")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    public ResponseEntity<DocumentResponseDTO> generateAiDraft(
+            @PathVariable UUID caseId
+    ) {
+        return ResponseEntity.ok(
+                documentService.generateAiDraft(caseId)
+        );
+    }
+
+    @PatchMapping("/api/documents/{id}/submit")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    public ResponseEntity<DocumentResponseDTO> submitForApproval(
+            @PathVariable UUID id
+    ) {
+
+        return ResponseEntity.ok(
+                documentService.submitForApproval(id)
+        );
+    }
+
+    @PatchMapping("/api/documents/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DocumentResponseDTO> approveDocument(
+            @PathVariable UUID id
+    ) {
+
+        return ResponseEntity.ok(
+                documentService.approveDocument(id)
+        );
+    }
 }

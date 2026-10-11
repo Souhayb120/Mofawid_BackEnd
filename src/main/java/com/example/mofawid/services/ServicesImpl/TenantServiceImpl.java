@@ -9,6 +9,7 @@ import com.example.mofawid.mapper.TenantMapper;
 import com.example.mofawid.mapper.UserMapper;
 import com.example.mofawid.models.Tenant;
 import com.example.mofawid.models.User;
+import com.example.mofawid.repositories.CaseRepo;
 import com.example.mofawid.repositories.TenantRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.TenantService;
@@ -22,7 +23,7 @@ import java.util.UUID;
 
 @Service
 public class TenantServiceImpl implements TenantService {
-
+private final CaseRepo caseRepository;
     private final TenantRepo tenantRepository;
     private final TenantMapper tenantMapper;
     private final UserRepo userRepository;
@@ -30,12 +31,13 @@ public class TenantServiceImpl implements TenantService {
     private final PasswordEncoder passwordEncoder;
 
     public TenantServiceImpl(
-            TenantRepo tenantRepository,
+            CaseRepo caseRepository, TenantRepo tenantRepository,
             TenantMapper tenantMapper,
             UserRepo userRepository,
             UserMapper userMapper,
             PasswordEncoder passwordEncoder
     ) {
+        this.caseRepository = caseRepository;
         this.tenantRepository = tenantRepository;
         this.tenantMapper = tenantMapper;
         this.userRepository = userRepository;
@@ -106,6 +108,7 @@ public class TenantServiceImpl implements TenantService {
         );
     }
 
+
     @Override
     public void deleteTenant(UUID id) {
 
@@ -113,6 +116,18 @@ public class TenantServiceImpl implements TenantService {
                 .orElseThrow(() ->
                         new RuntimeException("Tenant not found")
                 );
+
+        if (userRepository.existsByTenantId(id)) {
+            throw new RuntimeException(
+                    "Cannot delete tenant because it still has users"
+            );
+        }
+
+        if (caseRepository.existsByTenantId(id)) {
+            throw new RuntimeException(
+                    "Cannot delete tenant because it still has cases"
+            );
+        }
 
         tenantRepository.delete(tenant);
     }

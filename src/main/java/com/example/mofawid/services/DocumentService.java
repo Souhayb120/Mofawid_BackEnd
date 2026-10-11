@@ -5,7 +5,6 @@ import com.example.mofawid.DTO.DocumentDTO.DocumentResponseDTO;
 import org.springframework.data.domain.Page;
 
 import java.util.UUID;
-
 public interface DocumentService {
 
     DocumentResponseDTO createDocument(
@@ -13,9 +12,7 @@ public interface DocumentService {
             DocumentRequestDTO dto
     );
 
-    DocumentResponseDTO getDocumentById(
-            UUID id
-    );
+    DocumentResponseDTO getDocumentById(UUID id);
 
     Page<DocumentResponseDTO> getCaseDocuments(
             UUID caseId,
@@ -29,4 +26,11 @@ public interface DocumentService {
     );
 
     void deleteDocument(UUID id);
+
+    DocumentResponseDTO generateAiDraft(UUID caseId);
+
+
+    DocumentResponseDTO submitForApproval(UUID documentId);
+
+    DocumentResponseDTO approveDocument(UUID documentId);
 }

@@ -15,4 +15,5 @@ public interface CaseRepo extends JpaRepository<Case, UUID> {
     Optional<Case> findByIdAndTenantId(UUID id, UUID tenantId);
 
     Optional<Case> findByRefAndTenantId(String ref, UUID tenantId);
+    boolean existsByTenantId(UUID tenantId);
 }

@@ -27,7 +27,7 @@ public class UserRegisterDTO {
 
     private String phone;
 
-    @NotNull
+
     private Role role;
 
 

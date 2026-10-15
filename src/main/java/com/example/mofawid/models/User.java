@@ -41,7 +41,6 @@ public class User implements UserDetails {
     private Boolean active = true;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role;
 
     @Column(nullable = false, updatable = false)

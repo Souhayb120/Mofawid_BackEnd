@@ -2,6 +2,7 @@ package com.example.mofawid.controllers;
 
 import com.example.mofawid.DTO.DocumentDTO.DocumentRequestDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentResponseDTO;
+import com.example.mofawid.Enums.DocumentKind;
 import com.example.mofawid.services.DocumentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -83,12 +84,15 @@ public class DocumentController {
     @PostMapping("/api/cases/{caseId}/ai-draft")
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<DocumentResponseDTO> generateAiDraft(
-            @PathVariable UUID caseId
+            @PathVariable UUID caseId,
+            @RequestParam DocumentKind kind
     ) {
         return ResponseEntity.ok(
-                documentService.generateAiDraft(caseId)
+                documentService.generateAiDraft(caseId, kind)
         );
     }
+
+
 
     @PatchMapping("/api/documents/{id}/submit")
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")

@@ -2,6 +2,7 @@ package com.example.mofawid.services;
 
 import com.example.mofawid.DTO.DocumentDTO.DocumentRequestDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentResponseDTO;
+import com.example.mofawid.Enums.DocumentKind;
 import org.springframework.data.domain.Page;
 
 import java.util.UUID;
@@ -27,7 +28,10 @@ public interface DocumentService {
 
     void deleteDocument(UUID id);
 
-    DocumentResponseDTO generateAiDraft(UUID caseId);
+    DocumentResponseDTO generateAiDraft(
+            UUID caseId,
+            DocumentKind kind
+    );
 
 
     DocumentResponseDTO submitForApproval(UUID documentId);

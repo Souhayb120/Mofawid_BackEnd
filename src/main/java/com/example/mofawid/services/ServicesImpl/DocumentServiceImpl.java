@@ -3,6 +3,7 @@ package com.example.mofawid.services.ServicesImpl;
 import com.example.mofawid.Enums.CaseStatus;
 import com.example.mofawid.Enums.DocumentKind;
 import com.example.mofawid.Enums.DocumentStatus;
+import com.example.mofawid.Prompt.DocumentPromptFactory;
 import com.example.mofawid.models.Mission;
 import com.example.mofawid.models.Observation;
 import com.example.mofawid.repositories.MissionRepo;
@@ -35,12 +36,13 @@ public class DocumentServiceImpl implements DocumentService {
     private final CaseRepo caseRepository;
     private final UserRepo userRepository;
     private final DocumentMapper documentMapper;
+    private final DocumentPromptFactory documentPromptFactory;
 
     public DocumentServiceImpl(
             MissionRepo missionRepository, ObservationRepo observationRepository, AiService aiService, DocumentRepo documentRepository,
             CaseRepo caseRepository,
             UserRepo userRepository,
-            DocumentMapper documentMapper
+            DocumentMapper documentMapper, DocumentPromptFactory documentPromptFactory
     ) {
         this.missionRepository = missionRepository;
         this.observationRepository = observationRepository;
@@ -49,6 +51,7 @@ public class DocumentServiceImpl implements DocumentService {
         this.caseRepository = caseRepository;
         this.userRepository = userRepository;
         this.documentMapper = documentMapper;
+        this.documentPromptFactory = documentPromptFactory;
     }
 
     @Override
@@ -228,267 +231,46 @@ public class DocumentServiceImpl implements DocumentService {
 
 
     @Override
-    public DocumentResponseDTO generateAiDraft(UUID caseId) {
+    public DocumentResponseDTO generateAiDraft(
+            UUID caseId,
+            DocumentKind kind
+    ) {
 
         User currentUser = getCurrentUser();
 
         UUID tenantId = currentUser.getTenant().getId();
 
-        // 1. Get case from same tenant
         Case caseEntity = caseRepository
                 .findByIdAndTenantId(caseId, tenantId)
                 .orElseThrow(() ->
                         new RuntimeException("Case not found")
                 );
 
-        // 2. Get missions
         List<Mission> missions =
                 missionRepository.findAllByCaseEntityId(caseId);
 
-        // 3. Build strict Arabic prompt
-        StringBuilder prompt = new StringBuilder();
+        List<Observation> observations = missions.stream()
+                .flatMap(mission ->
+                        observationRepository
+                                .findAllByMissionId(mission.getId())
+                                .stream()
+                )
+                .toList();
+
+        String prompt = documentPromptFactory.buildPrompt(
+                kind,
+                caseEntity,
+                missions,
+                observations
+        );
 
-        prompt.append("""
-        أنت مساعد متخصص في صياغة مسودات محاضر المفوض القضائي بالمغرب.
-
-        المطلوب منك إعداد "مسودة محضر معاينة" باللغة العربية
-        وبأسلوب مهني ورسمي قريب من الصياغة المتداولة في مكاتب
-        المفوضين القضائيين بالمغرب.
-
-        هذه المسودة ليست وثيقة نهائية ولا تعتبر محضرا رسميا
-        إلا بعد مراجعتها واعتمادها وتوقيعها من طرف المفوض القضائي.
-
-        =========================
-        قواعد إلزامية
-        =========================
-
-        1. اعتمد حصرا على المعلومات المقدمة لك أسفله.
-
-        2. يمنع منعا باتا اختراع:
-           - أسماء أشخاص
-           - أرقام بطائق
-           - أرقام ملفات قضائية
-           - تواريخ
-           - ساعات
-           - عناوين
-           - تصريحات
-           - وقائع
-           - أحكام
-           - أوامر قضائية
-           - أرقام قوانين غير مقدمة أو غير مؤكدة.
-
-        3. إذا كانت معلومة ضرورية غير موجودة،
-           اكتب مكانها بوضوح:
-           [المعلومة غير متوفرة]
-           ولا تحاول استنتاجها.
-
-        4. يجب أن تكون المعاينات مادية ومحايدة ومجردة من أي رأي.
-
-        لا تكتب مثلا:
-        "ثبت أن الطرف تسبب في الضرر."
-
-        بل اكتب مثلا:
-        "عاينا وجود كسر ظاهر على مستوى..."
-
-        5. لا تحدد المسؤولية القانونية لأي شخص.
-
-        6. لا تصف فعلا بأنه:
-           - غير قانوني
-           - احتيالي
-           - متعمد
-           - يشكل اعتداء
-           - يشكل إخلالا
-
-           إلا إذا كانت هذه العبارة واردة صراحة في معطيات الملف
-           ويجب حينها نسبتها لصاحب التصريح وليس تقديمها كحقيقة.
-
-        7. فرّق بوضوح بين أنواع المعلومات:
-
-           DIRECT:
-           واقعة عاينها المكلف بالمهمة مباشرة.
-           تصاغ بصيغة مثل:
-           "عاينا..."
-           "لاحظنا..."
-           "تبين لنا ماديا..."
-
-           DECLARATION:
-           تصريح صادر عن شخص آخر.
-           لا تقدمه كحقيقة.
-           استعمل:
-           "صرح لنا..."
-           "وحسب تصريحه..."
-
-           UNVERIFIED:
-           معلومة غير متحقق منها.
-           يجب التنبيه بوضوح إلى عدم التحقق منها
-           وعدم تقديمها كواقعة ثابتة.
-
-        8. لا تضف اجتهادا قانونيا ولا تحليلا ولا استنتاجات.
-
-        9. حافظ على أسلوب عربي قانوني واضح ورسمي
-           دون مبالغة أو حشو.
-
-        10. لا تستعمل Markdown.
-            لا تستعمل النجوم ** أو العناوين بصيغة #.
-            أعد النص كوثيقة عربية نظيفة قابلة لاحقا للطباعة PDF.
-
-        =========================
-        البنية المطلوبة للمحضر
-        =========================
-
-        اكتب الوثيقة بهذا الترتيب:
-
-        المملكة المغربية
-
-        محضر معاينة
-
-        مرجع الملف:
-        ...
-
-        لفائدة:
-        ...
-
-        الموضوع:
-        ...
-
-        أولا: السند والغرض من الإجراء
-
-        اذكر أن المعاينة تدخل في إطار إعداد مسودة محضر
-        اعتمادا على المعطيات المسجلة في الملف.
-
-        لا تقل إن المعاينة تمت بناء على أمر قضائي
-        إلا إذا كانت هذه المعلومة مقدمة صراحة.
-
-        ثانيا: بيانات الانتقال والمهمة
-
-        اذكر:
-        - عنوان المكان
-        - موضوع المهمة
-        - تاريخ أو توقيت المهمة إذا كان متوفرا
-
-        إذا لم تتوفر المعلومة اكتب:
-        [المعلومة غير متوفرة]
-
-        ثالثا: المعاينات
-
-        رتب المعاينات ترتيبا زمنيا ومنطقيا.
-
-        حول كل Observation إلى فقرة قانونية واضحة.
-
-        بالنسبة لـ DIRECT:
-        استخدم لغة المعاينة المباشرة.
-
-        بالنسبة لـ DECLARATION:
-        نسب الكلام إلى صاحبه فقط إذا كانت هويته موجودة.
-        وإذا لم تكن موجودة، لا تخترع اسما.
-
-        بالنسبة لـ UNVERIFIED:
-        وضح أن المعلومة غير متحقق منها.
-
-        رابعا: الخلاصة
-
-        لا تقدم استنتاجا قانونيا.
-
-        اكتف بصياغة مهنية مثل:
-        "وبناء على ما تمت معاينته أعلاه، حررت هذه المسودة
-        لإثبات الوقائع المادية المضمنة بها، قصد عرضها على
-        المفوض القضائي المختص للمراجعة والاعتماد."
-
-        خامسا: المرفقات
-
-        لا تذكر صورا أو وثائق أو تسجيلات
-        إلا إذا كانت موجودة فعلا في المعطيات.
-
-        في النهاية أضف:
-
-        "مسودة مولدة بمساعدة الذكاء الاصطناعي
-        خاضعة للمراجعة والاعتماد من طرف المفوض القضائي."
-
-        =========================
-        معطيات الملف
-        =========================
-        """);
-
-        prompt.append("\nمرجع الملف: ")
-                .append(safe(caseEntity.getRef()));
-
-        prompt.append("\nاسم طالب الإجراء / الزبون: ")
-                .append(safe(caseEntity.getClientName()));
-
-        prompt.append("\nICE: ")
-                .append(safe(caseEntity.getClientIce()));
-
-        prompt.append("\nالعنوان: ")
-                .append(safe(caseEntity.getAddress()));
-
-        prompt.append("\nالموضوع: ")
-                .append(safe(caseEntity.getSubject()));
-
-        prompt.append("\nوصف الملف: ")
-                .append(safe(caseEntity.getDescription()));
-
-        prompt.append("\n\n=========================");
-        prompt.append("\nالمهام والمعاينات");
-        prompt.append("\n=========================\n");
-
-        // 4. Missions + observations
-        for (Mission mission : missions) {
-
-            prompt.append("\nالمهمة: ")
-                    .append(safe(mission.getTitle()));
-
-            prompt.append("\nوصف المهمة: ")
-                    .append(safe(mission.getDescription()));
-
-            prompt.append("\nتاريخ المهمة: ")
-                    .append(
-                            mission.getScheduledAt() != null
-                                    ? mission.getScheduledAt().toString()
-                                    : "[المعلومة غير متوفرة]"
-                    );
-
-            List<Observation> observations =
-                    observationRepository.findAllByMissionId(
-                            mission.getId()
-                    );
-
-            if (observations.isEmpty()) {
-                prompt.append("\nلا توجد معاينات مسجلة لهذه المهمة.\n");
-                continue;
-            }
-
-            prompt.append("\nالمعاينات المسجلة:\n");
-
-            for (Observation observation : observations) {
-
-                prompt.append("\nنوع المعاينة: ")
-                        .append(observation.getKind());
-
-                prompt.append("\nالمضمون: ")
-                        .append(safe(observation.getDescription()));
-
-                prompt.append("\nتاريخ التسجيل: ")
-                        .append(
-                                observation.getObservedAt() != null
-                                        ? observation.getObservedAt().toString()
-                                        : "[المعلومة غير متوفرة]"
-                        );
-
-                prompt.append("\n---");
-            }
-
-            prompt.append("\n");
-        }
-
-        // 5. Gemini
         String generatedText =
-                aiService.generate(prompt.toString());
+                aiService.generate(prompt);
 
-        // 6. Save document
         Document document = new Document();
 
         document.setCaseEntity(caseEntity);
-        document.setKind(DocumentKind.PROCES_VERBAL);
+        document.setKind(kind);
         document.setStatus(DocumentStatus.DRAFT_AI);
         document.setContent(generatedText);
 

@@ -264,8 +264,8 @@ public class DocumentServiceImpl implements DocumentService {
                 observations
         );
 
-        String generatedText =
-                aiService.generate(prompt);
+
+        String generatedText = aiService.generate(prompt);
 
         Document document = new Document();
 

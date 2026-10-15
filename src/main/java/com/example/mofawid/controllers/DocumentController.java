@@ -50,6 +50,7 @@ public class DocumentController {
         );
     }
 
+
     @GetMapping("/api/documents/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<DocumentResponseDTO> getDocumentById(

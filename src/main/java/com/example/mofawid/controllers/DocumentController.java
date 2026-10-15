@@ -35,6 +35,7 @@ public class DocumentController {
     }
 
     @GetMapping("/api/cases/{caseId}/documents")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<Page<DocumentResponseDTO>> getCaseDocuments(
             @PathVariable UUID caseId,
             @RequestParam(defaultValue = "0") int page,

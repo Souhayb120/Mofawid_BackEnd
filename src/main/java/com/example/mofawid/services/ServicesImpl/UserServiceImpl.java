@@ -9,12 +9,15 @@ import com.example.mofawid.mapper.UserMapper;
 import com.example.mofawid.models.User;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.UserService;
+import com.example.mofawid.exceptions.BadRequestException;
+import com.example.mofawid.exceptions.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -35,6 +38,7 @@ public class UserServiceImpl implements UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     @Override
     public UserResposeDTO createUser(UserRegisterDTO dto) {
 
@@ -44,19 +48,19 @@ public class UserServiceImpl implements UserService {
         if (dto.getRole() != Role.ASSISTANT
                 && dto.getRole() != Role.COLLABORATEUR) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Admin can only create ASSISTANT or COLLABORATEUR"
             );
         }
 
 
         if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+            throw new BadRequestException("Username already exists");
         }
 
 
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already exists");
+            throw new BadRequestException("Email already exists");
         }
 
 
@@ -88,7 +92,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository
                 .findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         return userMapper.toResponseDto(user);
     }
@@ -113,6 +117,7 @@ public class UserServiceImpl implements UserService {
         return users.map(userMapper::toResponseDto);
     }
 
+    @Transactional
     @Override
     public UserResposeDTO updateUser(
             UUID id,
@@ -127,12 +132,12 @@ public class UserServiceImpl implements UserService {
         User user = userRepository
                 .findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         if (dto.getRole() != Role.ASSISTANT
                 && dto.getRole() != Role.COLLABORATEUR) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Admin can only assign ASSISTANT or COLLABORATEUR roles"
             );
         }
@@ -151,6 +156,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponseDto(updatedUser);
     }
 
+    @Transactional
     @Override
     public void deleteUser(UUID id) {
 
@@ -162,7 +168,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository
                 .findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                        new ResourceNotFoundException("User not found"));
 
         userRepository.delete(user);
     }
@@ -177,6 +183,6 @@ public class UserServiceImpl implements UserService {
 
         return userRepository.findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException("Current user not found"));
+                        new ResourceNotFoundException("Current user not found"));
     }
 }

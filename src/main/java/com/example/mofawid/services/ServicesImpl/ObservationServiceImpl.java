@@ -11,11 +11,14 @@ import com.example.mofawid.repositories.MissionRepo;
 import com.example.mofawid.repositories.ObservationRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.ObservationService;
+import com.example.mofawid.exceptions.ResourceNotFoundException;
+import com.example.mofawid.exceptions.ForbiddenException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -39,6 +42,7 @@ public class ObservationServiceImpl implements ObservationService {
         this.observationMapper = observationMapper;
     }
 
+    @Transactional
     @Override
     public ObservationResponseDTO createObservation(
             UUID missionId,
@@ -57,7 +61,7 @@ public class ObservationServiceImpl implements ObservationService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Mission not found")
+                        new ResourceNotFoundException("Mission not found")
                 );
 
         // Collaborateur can add observation
@@ -66,7 +70,7 @@ public class ObservationServiceImpl implements ObservationService {
                 .getId()
                 .equals(currentUser.getId())) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You are not assigned to this mission"
             );
         }
@@ -103,7 +107,7 @@ public class ObservationServiceImpl implements ObservationService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Mission not found")
+                        new ResourceNotFoundException("Mission not found")
                 );
 
         // Collaborateur can only see observations
@@ -113,7 +117,7 @@ public class ObservationServiceImpl implements ObservationService {
                 .getId()
                 .equals(currentUser.getId())) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You are not assigned to this mission"
             );
         }
@@ -143,7 +147,7 @@ public class ObservationServiceImpl implements ObservationService {
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Current user not found"
                         )
                 );

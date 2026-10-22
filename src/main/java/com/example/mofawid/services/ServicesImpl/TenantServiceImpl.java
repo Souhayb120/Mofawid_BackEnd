@@ -13,11 +13,15 @@ import com.example.mofawid.repositories.CaseRepo;
 import com.example.mofawid.repositories.TenantRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.TenantService;
+import com.example.mofawid.exceptions.ResourceNotFoundException;
+import com.example.mofawid.exceptions.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -45,6 +49,7 @@ private final CaseRepo caseRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     @Override
     public TenantResposeDTO createTenant(TenantRequestDTO dto) {
 
@@ -61,7 +66,7 @@ private final CaseRepo caseRepository;
 
         Tenant tenant = tenantRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Tenant not found")
+                        new ResourceNotFoundException("Tenant not found")
                 );
 
         return tenantMapper.toResponseDto(tenant);
@@ -84,6 +89,7 @@ private final CaseRepo caseRepository;
         );
     }
 
+    @Transactional
     @Override
     public TenantResposeDTO updateTenant(
             UUID id,
@@ -92,7 +98,7 @@ private final CaseRepo caseRepository;
 
         Tenant tenant = tenantRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Tenant not found")
+                        new ResourceNotFoundException("Tenant not found")
                 );
 
         tenantMapper.updateEntityFromDto(
@@ -109,22 +115,23 @@ private final CaseRepo caseRepository;
     }
 
 
+    @Transactional
     @Override
     public void deleteTenant(UUID id) {
 
         Tenant tenant = tenantRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Tenant not found")
+                        new ResourceNotFoundException("Tenant not found")
                 );
 
         if (userRepository.existsByTenantId(id)) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Cannot delete tenant because it still has users"
             );
         }
 
         if (caseRepository.existsByTenantId(id)) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Cannot delete tenant because it still has cases"
             );
         }
@@ -132,6 +139,7 @@ private final CaseRepo caseRepository;
         tenantRepository.delete(tenant);
     }
 
+    @Transactional
     @Override
     public UserResposeDTO createTenantAdmin(
             UUID tenantId,
@@ -140,17 +148,17 @@ private final CaseRepo caseRepository;
 
         Tenant tenant = tenantRepository.findById(tenantId)
                 .orElseThrow(() ->
-                        new RuntimeException("Tenant not found")
+                        new ResourceNotFoundException("Tenant not found")
                 );
 
         if (userRepository.findByUsername(dto.getUsername()).isPresent()) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Username already exists"
             );
         }
 
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Email already exists"
             );
         }
@@ -181,5 +189,35 @@ private final CaseRepo caseRepository;
         return userMapper.toResponseDto(
                 savedAdmin
         );
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public TenantResposeDTO getMyTenant() {
+
+        User currentUser = getCurrentUser();
+
+        Tenant tenant = currentUser.getTenant();
+
+        // super admin has no office
+        if (tenant == null) {
+            throw new ResourceNotFoundException("You don't belong to any office");
+        }
+
+        return tenantMapper.toResponseDto(tenant);
+    }
+
+    private User getCurrentUser() {
+
+        String username = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        return userRepository
+                .findByUsername(username)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Current user not found")
+                );
     }
 }

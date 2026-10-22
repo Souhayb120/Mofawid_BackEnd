@@ -24,4 +24,6 @@ public interface TenantService {
 
     UserResposeDTO createTenantAdmin(UUID tenantId, UserRegisterDTO dto);
 
+    TenantResposeDTO getMyTenant();
+
 }

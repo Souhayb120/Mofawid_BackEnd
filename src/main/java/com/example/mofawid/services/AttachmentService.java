@@ -13,7 +13,8 @@ public interface AttachmentService {
 
     AttachmentResponseDTO uploadToCase(
             UUID caseId,
-            MultipartFile file
+            MultipartFile file,
+            String caption
     );
 
     Page<AttachmentResponseDTO> getCaseAttachments(

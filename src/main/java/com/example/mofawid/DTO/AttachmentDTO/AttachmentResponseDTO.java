@@ -18,6 +18,8 @@ public class AttachmentResponseDTO {
     private String originalName;
     private String contentType;
     private Long size;
+
+    private String caption;
     private Instant uploadedAt;
     private UUID caseId;
     private UUID uploadedById;

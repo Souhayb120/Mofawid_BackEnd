@@ -44,6 +44,15 @@ public class TenantController {
         );
     }
 
+    // the office of the logged user (used for the letterhead of the reports)
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    public ResponseEntity<TenantResposeDTO> getMyTenant() {
+        return ResponseEntity.ok(
+                tenantService.getMyTenant()
+        );
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Page<TenantResposeDTO>> getAllTenants(

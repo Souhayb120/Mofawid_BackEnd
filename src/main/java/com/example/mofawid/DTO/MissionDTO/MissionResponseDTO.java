@@ -26,6 +26,10 @@ public class MissionResponseDTO {
 
     private LocalDateTime scheduledAt;
 
+    private String presentPersonName;
+
+    private String presentPersonCapacity;
+
     private MissionStatus status;
 
     private Instant createdAt;

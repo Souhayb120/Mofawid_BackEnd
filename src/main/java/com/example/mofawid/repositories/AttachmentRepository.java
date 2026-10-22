@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,9 @@ public interface AttachmentRepository
             UUID tenantId,
             Pageable pageable
     );
+
+    // the files of a case in the order they were uploaded (photo 1, photo 2...)
+    List<Attachment> findAllByCaseEntityIdOrderByUploadedAtAsc(UUID caseId);
 
     Optional<Attachment> findByIdAndTenantId(
             UUID id,

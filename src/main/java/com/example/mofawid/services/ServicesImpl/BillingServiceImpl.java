@@ -11,8 +11,11 @@ import com.example.mofawid.repositories.BillingRepo;
 import com.example.mofawid.repositories.CaseRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.BillingService;
+import com.example.mofawid.exceptions.ResourceNotFoundException;
+import com.example.mofawid.exceptions.BadRequestException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -36,6 +39,7 @@ public class BillingServiceImpl implements BillingService {
         this.billingMapper = billingMapper;
     }
 
+    @Transactional
     @Override
     public BillingResponseDTO createBilling(
             UUID caseId,
@@ -53,14 +57,14 @@ public class BillingServiceImpl implements BillingService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Case not found")
+                        new ResourceNotFoundException("Case not found")
                 );
 
         if (billingRepository
                 .findByCaseEntityId(caseId)
                 .isPresent()) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Billing already exists for this case"
             );
         }
@@ -97,14 +101,14 @@ public class BillingServiceImpl implements BillingService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Case not found")
+                        new ResourceNotFoundException("Case not found")
                 );
 
         Billing billing =
                 billingRepository
                         .findByCaseEntityId(caseId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Billing not found"
                                 )
                         );
@@ -114,6 +118,7 @@ public class BillingServiceImpl implements BillingService {
         );
     }
 
+    @Transactional
     @Override
     public BillingResponseDTO updateBilling(
             UUID caseId,
@@ -131,14 +136,14 @@ public class BillingServiceImpl implements BillingService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Case not found")
+                        new ResourceNotFoundException("Case not found")
                 );
 
         Billing billing =
                 billingRepository
                         .findByCaseEntityId(caseId)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Billing not found"
                                 )
                         );
@@ -174,7 +179,7 @@ public class BillingServiceImpl implements BillingService {
                 billing.getAmountPaid();
 
         if (paid.compareTo(total) > 0) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Amount paid cannot be greater than total amount"
             );
         }
@@ -217,7 +222,7 @@ public class BillingServiceImpl implements BillingService {
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Current user not found"
                         )
                 );

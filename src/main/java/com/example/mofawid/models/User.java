@@ -54,4 +54,10 @@ public class User implements UserDetails {
                 )
         );
     }
+
+    // Spring Security uses this to know if the account is allowed to log in
+    @Override
+    public boolean isEnabled() {
+        return Boolean.TRUE.equals(active);
+    }
 }

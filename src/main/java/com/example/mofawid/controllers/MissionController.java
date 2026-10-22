@@ -1,5 +1,6 @@
 package com.example.mofawid.controllers;
 
+import com.example.mofawid.DTO.MissionDTO.MissionPresenceDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionRequestDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionResponseDTO;
 import com.example.mofawid.services.MissionService;
@@ -21,7 +22,6 @@ public class MissionController {
         this.missionService = missionService;
     }
 
-    // ADMIN creates a mission and assigns it to a collaborateur
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MissionResponseDTO> createMission(
@@ -32,7 +32,6 @@ public class MissionController {
         );
     }
 
-    // ADMIN sees all missions of his tenant
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<MissionResponseDTO>> getAllMissions(
@@ -44,7 +43,6 @@ public class MissionController {
         );
     }
 
-    // ADMIN or COLLABORATEUR can open one mission
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'COLLABORATEUR')")
     public ResponseEntity<MissionResponseDTO> getMissionById(
@@ -55,7 +53,6 @@ public class MissionController {
         );
     }
 
-    // Collaborateur sees only his missions
     @GetMapping("/my")
     @PreAuthorize("hasRole('COLLABORATEUR')")
     public ResponseEntity<Page<MissionResponseDTO>> getMyMissions(
@@ -67,7 +64,6 @@ public class MissionController {
         );
     }
 
-    // Collaborateur starts his mission
     @PatchMapping("/{id}/start")
     @PreAuthorize("hasRole('COLLABORATEUR')")
     public ResponseEntity<MissionResponseDTO> startMission(
@@ -78,7 +74,18 @@ public class MissionController {
         );
     }
 
-    // Collaborateur completes his mission
+    // constat: the person present (بحضور وتحت عهدة ومسؤولية ...)
+    @PatchMapping("/{id}/presence")
+    @PreAuthorize("hasRole('COLLABORATEUR')")
+    public ResponseEntity<MissionResponseDTO> updatePresence(
+            @PathVariable UUID id,
+            @Valid @RequestBody MissionPresenceDTO dto
+    ) {
+        return ResponseEntity.ok(
+                missionService.updatePresence(id, dto)
+        );
+    }
+
     @PatchMapping("/{id}/complete")
     @PreAuthorize("hasRole('COLLABORATEUR')")
     public ResponseEntity<MissionResponseDTO> completeMission(

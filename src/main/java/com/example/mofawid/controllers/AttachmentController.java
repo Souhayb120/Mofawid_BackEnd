@@ -27,11 +27,13 @@ public class AttachmentController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<AttachmentResponseDTO> uploadToCase(
             @PathVariable UUID caseId,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            // optional text under the photo in the report
+            @RequestParam(value = "caption", required = false) String caption
     ) {
 
         AttachmentResponseDTO response =
-                attachmentService.uploadToCase(caseId, file);
+                attachmentService.uploadToCase(caseId, file, caption);
 
         return ResponseEntity.ok(response);
     }
@@ -50,11 +52,7 @@ public class AttachmentController {
     }
 
 
-    /**
-     * Renvoie le contenu du fichier depuis R2 (bucket privé) via le back-end.
-     * `inline=true` sert à l'affichage (PDF/images) dans le navigateur,
-     * sinon le fichier est proposé au téléchargement.
-     */
+
     @GetMapping("/api/attachments/{attachmentId}/download")
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<byte[]> downloadAttachment(

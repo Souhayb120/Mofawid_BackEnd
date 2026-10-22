@@ -34,4 +34,11 @@ public class Document {
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+
+    // filled when the admin approves the document ("بتاريخ" of the report)
+    private Instant approvedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
 }

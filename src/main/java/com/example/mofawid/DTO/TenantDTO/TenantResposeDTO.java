@@ -19,5 +19,23 @@ public class TenantResposeDTO {
 
     private String phone;
 
+    private String huissierNameAr;
+
+    private String huissierNameFr;
+
+    private String appealCourtAr;
+
+    private String appealCourtFr;
+
+    private String firstInstanceCourtAr;
+
+    private String addressFr;
+
+    private String email;
+
+    private String city;
+
+    private Integer startNumber;
+
     private Instant createdAt;
 }

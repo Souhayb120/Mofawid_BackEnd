@@ -17,5 +17,7 @@ public class ObservationResponseDTO {
 
     private String description;
 
+    private String sectionTitle;
+
     private Instant observedAt;
 }

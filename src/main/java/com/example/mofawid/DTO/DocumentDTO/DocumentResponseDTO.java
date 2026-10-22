@@ -23,4 +23,8 @@ public class DocumentResponseDTO {
     private String content;
 
     private Instant createdAt;
+
+    private Instant approvedAt;
+
+    private String approvedByUsername;
 }

@@ -37,6 +37,11 @@ public class Mission {
 
     private LocalDateTime scheduledAt;
 
+    // constat: "بحضور وتحت عهدة ومسؤولية السيدة ... بصفتها ..."
+    private String presentPersonName;
+
+    private String presentPersonCapacity;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MissionStatus status = MissionStatus.ASSIGNED;

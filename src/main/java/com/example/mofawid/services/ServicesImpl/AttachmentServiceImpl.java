@@ -13,11 +13,13 @@ import com.example.mofawid.repositories.CaseRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.AttachmentService;
 import com.example.mofawid.services.StorageService;
+import com.example.mofawid.exceptions.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 @Service
@@ -37,15 +39,16 @@ public class AttachmentServiceImpl implements AttachmentService {
         this.attachmentMapper = attachmentMapper;
     }
 
+    @Transactional
     @Override
-    public AttachmentResponseDTO uploadToCase(UUID caseId, MultipartFile file) {
+    public AttachmentResponseDTO uploadToCase(UUID caseId, MultipartFile file, String caption) {
         User currentUser = getLoggedUser();
         Tenant tenant = currentUser.getTenant();
         UUID currentTenantId = currentUser.getTenant().getId();
         Case currentCase = caseRepo.findByIdAndTenantId(caseId, currentTenantId).orElseThrow(
                 () -> new ResourceNotFoundException("case not found !! "));
         if (file.isEmpty()) {
-            throw new RuntimeException("the file is emtpty !!");
+            throw new BadRequestException("the file is emtpty !!");
         }
             String originalName = file.getOriginalFilename();
             String uniqueName = UUID.randomUUID() + "-" + originalName;
@@ -63,7 +66,16 @@ public class AttachmentServiceImpl implements AttachmentService {
         attachment.setTenant(tenant);
         attachment.setSize(file.getSize());
         attachment.setContentType(file.getContentType());
-        Attachment saved = attachmentRepository.save(attachment);
+        attachment.setCaption(caption);
+        Attachment saved;
+        try {
+            // saveAndFlush so a DB error happens here and not later at commit
+            saved = attachmentRepository.saveAndFlush(attachment);
+        } catch (RuntimeException e) {
+            // the DB rollback can't remove the file from R2, so we delete it ourselves
+            storageService.delete(storageKey);
+            throw e;
+        }
 
         return attachmentMapper.toResponseDto(saved);
     }
@@ -96,6 +108,7 @@ public class AttachmentServiceImpl implements AttachmentService {
         );
     }
 
+    @Transactional
     @Override
     public void deleteAttachment(UUID attachmentId) {
         User currentUser = getLoggedUser();

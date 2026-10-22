@@ -1,5 +1,6 @@
 package com.example.mofawid.services;
 
+import com.example.mofawid.DTO.MissionDTO.MissionPresenceDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionRequestDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionResponseDTO;
 import org.springframework.data.domain.Page;
@@ -25,4 +26,6 @@ public interface MissionService {
     MissionResponseDTO startMission(UUID id);
 
     MissionResponseDTO completeMission(UUID id);
+
+    MissionResponseDTO updatePresence(UUID id, MissionPresenceDTO dto);
 }

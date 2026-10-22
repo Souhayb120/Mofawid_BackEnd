@@ -6,8 +6,11 @@ import com.example.mofawid.DTO.UserDTO.UserRegisterDTO;
 import com.example.mofawid.config.JwtUtil;
 import com.example.mofawid.models.User;
 import com.example.mofawid.repositories.UserRepo;
+import com.example.mofawid.exceptions.BadRequestException;
+import com.example.mofawid.exceptions.UnauthorizedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -25,7 +28,7 @@ public class AuthService {
     public void register(UserRegisterDTO request) {
 
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+            throw new BadRequestException("Username already exists");
         }
 
         User user = new User();
@@ -47,17 +50,28 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(UserLoginDTO dto) {
 
         User user = userRepository.findByUsername(dto.getUsername())
                 .orElseThrow(() ->
-                        new RuntimeException("Invalid username or password"));
+                        new UnauthorizedException("Invalid username or password"));
 
         if (!passwordEncoder.matches(
                 dto.getPassword(),
                 user.getPassword()
         )) {
-            throw new RuntimeException("Invalid username or password");
+            throw new UnauthorizedException("Invalid username or password");
+        }
+
+        if (!user.isEnabled()) {
+            throw new UnauthorizedException("Your account is disabled");
+        }
+
+
+        if (user.getTenant() != null
+                && !"active".equalsIgnoreCase(user.getTenant().getStatus())) {
+            throw new UnauthorizedException("Your office account is not active");
         }
 
         String token = jwtUtil.generateToken(user);

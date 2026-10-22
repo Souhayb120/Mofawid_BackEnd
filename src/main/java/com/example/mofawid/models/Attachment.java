@@ -35,6 +35,9 @@ public class Attachment {
     @Column(nullable = false)
     private Long size;
 
+    // text under the photo in the report, ex: "مراسلة 2026/07/08 بشأن ملف السيارة"
+    private String caption;
+
     @Column(nullable = false, updatable = false)
     private Instant uploadedAt = Instant.now();
 

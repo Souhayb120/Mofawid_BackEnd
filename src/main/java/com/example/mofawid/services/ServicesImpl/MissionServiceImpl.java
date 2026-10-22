@@ -1,5 +1,6 @@
 package com.example.mofawid.services.ServicesImpl;
 
+import com.example.mofawid.DTO.MissionDTO.MissionPresenceDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionRequestDTO;
 import com.example.mofawid.DTO.MissionDTO.MissionResponseDTO;
 import com.example.mofawid.Enums.CaseStatus;
@@ -13,11 +14,15 @@ import com.example.mofawid.repositories.CaseRepo;
 import com.example.mofawid.repositories.MissionRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.MissionService;
+import com.example.mofawid.exceptions.ResourceNotFoundException;
+import com.example.mofawid.exceptions.BadRequestException;
+import com.example.mofawid.exceptions.ForbiddenException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -40,6 +45,7 @@ public class MissionServiceImpl implements MissionService {
         this.userRepository = userRepository;
         this.missionMapper = missionMapper;
     }
+    @Transactional
     @Override
     public MissionResponseDTO createMission(MissionRequestDTO dto) {
 
@@ -50,7 +56,7 @@ public class MissionServiceImpl implements MissionService {
         Case caseEntity = caseRepository
                 .findByIdAndTenantId(dto.getCaseId(), tenantId)
                 .orElseThrow(() ->
-                        new RuntimeException("Case not found")
+                        new ResourceNotFoundException("Case not found")
                 );
 
         User collaborateur = userRepository
@@ -59,11 +65,11 @@ public class MissionServiceImpl implements MissionService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Collaborateur not found")
+                        new ResourceNotFoundException("Collaborateur not found")
                 );
 
         if (collaborateur.getRole() != Role.COLLABORATEUR) {
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Selected user must be a COLLABORATEUR"
             );
         }
@@ -101,13 +107,13 @@ public class MissionServiceImpl implements MissionService {
         Mission mission = missionRepository
                 .findByIdAndCaseEntityTenantId(id, tenantId)
                 .orElseThrow(() ->
-                        new RuntimeException("Mission not found")
+                        new ResourceNotFoundException("Mission not found")
                 );
 
         if (currentUser.getRole() == Role.COLLABORATEUR
                 && !mission.getAssignedTo().getId().equals(currentUser.getId())) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You are not assigned to this mission"
             );
         }
@@ -161,6 +167,7 @@ public class MissionServiceImpl implements MissionService {
         );
     }
 
+    @Transactional
     @Override
     public MissionResponseDTO startMission(UUID id) {
 
@@ -175,14 +182,14 @@ public class MissionServiceImpl implements MissionService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Mission not found")
+                        new ResourceNotFoundException("Mission not found")
                 );
 
         if (!mission.getAssignedTo()
                 .getId()
                 .equals(currentUser.getId())) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You are not assigned to this mission"
             );
         }
@@ -190,7 +197,7 @@ public class MissionServiceImpl implements MissionService {
         if (mission.getStatus()
                 != MissionStatus.ASSIGNED) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Only an ASSIGNED mission can be started"
             );
         }
@@ -217,6 +224,7 @@ public class MissionServiceImpl implements MissionService {
         );
     }
 
+    @Transactional
     @Override
     public MissionResponseDTO completeMission(UUID id) {
 
@@ -230,21 +238,21 @@ public class MissionServiceImpl implements MissionService {
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Mission not found")
+                        new ResourceNotFoundException("Mission not found")
                 );
 
         if (!mission.getAssignedTo()
                 .getId()
                 .equals(currentUser.getId())) {
 
-            throw new RuntimeException(
+            throw new ForbiddenException(
                     "You are not assigned to this mission"
             );
         }
 
         if (mission.getStatus() != MissionStatus.IN_PROGRESS) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Only an IN_PROGRESS mission can be completed"
             );
         }
@@ -252,6 +260,53 @@ public class MissionServiceImpl implements MissionService {
         mission.setStatus(
                 MissionStatus.COMPLETED
         );
+
+        Mission updatedMission =
+                missionRepository.save(mission);
+
+        return missionMapper.toResponseDto(
+                updatedMission
+        );
+    }
+
+    @Transactional
+    @Override
+    public MissionResponseDTO updatePresence(
+            UUID id,
+            MissionPresenceDTO dto
+    ) {
+
+        User currentUser = getCurrentUser();
+
+        UUID tenantId = currentUser.getTenant().getId();
+
+        Mission mission = missionRepository
+                .findByIdAndCaseEntityTenantId(
+                        id,
+                        tenantId
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Mission not found")
+                );
+
+        if (!mission.getAssignedTo()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new ForbiddenException(
+                    "You are not assigned to this mission"
+            );
+        }
+
+        if (mission.getStatus() != MissionStatus.IN_PROGRESS) {
+
+            throw new BadRequestException(
+                    "Start the mission before adding the person present"
+            );
+        }
+
+        mission.setPresentPersonName(dto.getPresentPersonName());
+        mission.setPresentPersonCapacity(dto.getPresentPersonCapacity());
 
         Mission updatedMission =
                 missionRepository.save(mission);
@@ -271,7 +326,7 @@ public class MissionServiceImpl implements MissionService {
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Current user not found"
                         )
                 );

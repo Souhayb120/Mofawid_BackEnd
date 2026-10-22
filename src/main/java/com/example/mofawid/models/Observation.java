@@ -24,6 +24,9 @@ public class Observation {
     @Column(nullable = false)
     private ObservationKind kind;
 
+    // title of the section in the report, ex: "معاينة المصعد الكهربائي"
+    private String sectionTitle;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 

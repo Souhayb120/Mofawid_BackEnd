@@ -1,6 +1,7 @@
 package com.example.mofawid.DTO.DocumentDTO;
 
 import com.example.mofawid.Enums.DocumentKind;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 

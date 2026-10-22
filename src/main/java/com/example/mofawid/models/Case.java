@@ -9,7 +9,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cases")
+@Table(
+        name = "cases",
+        uniqueConstraints = {
+                // the ref (ex: 2026/2282) is unique inside one office only
+                @UniqueConstraint(columnNames = {"tenant_id", "ref"}),
+                @UniqueConstraint(columnNames = {"tenant_id", "register_year", "register_number"})
+        }
+)
 @Data
 public class Case {
 
@@ -17,8 +24,14 @@ public class Case {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    // مرجعنا, ex: 2026/2282
+    @Column(nullable = false)
     private String ref;
+
+    // the year and the number of the office register (used to build the ref)
+    private Integer registerYear;
+
+    private Integer registerNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

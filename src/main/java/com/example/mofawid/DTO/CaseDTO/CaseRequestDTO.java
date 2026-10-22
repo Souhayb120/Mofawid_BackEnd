@@ -16,12 +16,13 @@ public class CaseRequestDTO {
 
     @NotBlank
     private String address;
-
+    @NotBlank
     private String phone;
 
     @NotBlank
     private String subject;
 
+    @NotBlank
     private String description;
 
     @NotNull

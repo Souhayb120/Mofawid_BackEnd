@@ -13,4 +13,7 @@ public class ObservationRequestDTO {
 
     @NotBlank
     private String description;
+
+    // optional, ex: "معاينة المصعد الكهربائي"
+    private String sectionTitle;
 }

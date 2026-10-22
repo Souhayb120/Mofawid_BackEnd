@@ -12,9 +12,12 @@ import com.example.mofawid.repositories.CaseRepo;
 import com.example.mofawid.repositories.CaseTrackingRepo;
 import com.example.mofawid.repositories.UserRepo;
 import com.example.mofawid.services.CaseTrackingService;
+import com.example.mofawid.exceptions.ResourceNotFoundException;
+import com.example.mofawid.exceptions.BadRequestException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -51,6 +54,7 @@ public class CaseTrackingServiceImpl
         this.userRepository = userRepository;
     }
 
+    @Transactional
     @Override
     public TrackingCodeResponseDTO generateTrackingCode(
             UUID caseId
@@ -68,7 +72,7 @@ public class CaseTrackingServiceImpl
                         tenantId
                 )
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Case not found"
                         )
                 );
@@ -78,7 +82,7 @@ public class CaseTrackingServiceImpl
                 .findByCaseEntityId(caseId)
                 .isPresent()) {
 
-            throw new RuntimeException(
+            throw new BadRequestException(
                     "Tracking code already exists for this case"
             );
         }
@@ -128,7 +132,7 @@ public class CaseTrackingServiceImpl
                 caseTrackingRepository
                         .findByCodeHash(codeHash)
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Invalid tracking code"
                                 )
                         );
@@ -311,7 +315,7 @@ public class CaseTrackingServiceImpl
         return userRepository
                 .findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Current user not found"
                         )
                 );

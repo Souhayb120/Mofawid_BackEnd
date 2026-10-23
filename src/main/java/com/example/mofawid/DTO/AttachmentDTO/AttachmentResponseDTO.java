@@ -22,5 +22,7 @@ public class AttachmentResponseDTO {
     private String caption;
     private Instant uploadedAt;
     private UUID caseId;
+    // null when the file was uploaded to the case (not during a mission)
+    private UUID missionId;
     private UUID uploadedById;
 }

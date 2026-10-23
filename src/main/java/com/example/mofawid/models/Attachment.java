@@ -45,6 +45,11 @@ public class Attachment {
     @JoinColumn(name = "case_id", nullable = false)
     private Case caseEntity;
 
+    // only filled when the collaborateur uploads the file during a mission
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "mission_id")
+    private Mission mission;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by", nullable = false)
     private User uploadedBy;

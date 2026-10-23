@@ -22,6 +22,17 @@ public interface AttachmentService {
             Pageable pageable
     );
 
+    AttachmentResponseDTO uploadToMission(
+            UUID missionId,
+            MultipartFile file,
+            String caption
+    );
+
+    Page<AttachmentResponseDTO> getMissionAttachments(
+            UUID missionId,
+            Pageable pageable
+    );
+
     AttachmentDownloadDTO downloadAttachment(UUID attachmentId);
 
     void deleteAttachment(UUID attachmentId);

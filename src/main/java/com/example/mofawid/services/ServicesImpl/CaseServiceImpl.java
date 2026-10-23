@@ -105,7 +105,9 @@ public class CaseServiceImpl implements CaseService {
     @Override
     public Page<CaseResponseDTO> getAllCases(
             int page,
-            int size
+            int size,
+            String search,
+            CaseStatus status
     ) {
 
         User currentUser = getCurrentUser();
@@ -116,9 +118,17 @@ public class CaseServiceImpl implements CaseService {
         Pageable pageable =
                 PageRequest.of(page, size);
 
+        // empty search = no filter, else "%text%" for the LIKE
+        String searchPattern = null;
+        if (search != null && !search.isBlank()) {
+            searchPattern = "%" + search.trim().toLowerCase() + "%";
+        }
+
         Page<Case> cases =
-                caseRepository.findAllByTenantId(
+                caseRepository.searchCases(
                         tenantId,
+                        status,
+                        searchPattern,
                         pageable
                 );
 

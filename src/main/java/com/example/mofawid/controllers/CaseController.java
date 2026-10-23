@@ -2,6 +2,7 @@ package com.example.mofawid.controllers;
 
 import com.example.mofawid.DTO.CaseDTO.CaseRequestDTO;
 import com.example.mofawid.DTO.CaseDTO.CaseResponseDTO;
+import com.example.mofawid.Enums.CaseStatus;
 import com.example.mofawid.services.CaseService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -35,10 +36,13 @@ public class CaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<Page<CaseResponseDTO>> getAllCases(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            // optional filters: ?search=2026/12&status=IN_PROGRESS
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) CaseStatus status
     ) {
         return ResponseEntity.ok(
-                caseService.getAllCases(page, size)
+                caseService.getAllCases(page, size, search, status)
         );
     }
 

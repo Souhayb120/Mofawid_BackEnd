@@ -18,6 +18,12 @@ public interface AttachmentRepository
             Pageable pageable
     );
 
+    Page<Attachment> findAllByMissionIdAndTenantId(
+            UUID missionId,
+            UUID tenantId,
+            Pageable pageable
+    );
+
     // the files of a case in the order they were uploaded (photo 1, photo 2...)
     List<Attachment> findAllByCaseEntityIdOrderByUploadedAtAsc(UUID caseId);
 

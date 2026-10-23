@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -40,6 +41,17 @@ public class MissionController {
     ) {
         return ResponseEntity.ok(
                 missionService.getAllMissions(page, size)
+        );
+    }
+
+    // the missions of one case (tab "Missions" of the case page)
+    @GetMapping("/by-case/{caseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<MissionResponseDTO>> getMissionsByCase(
+            @PathVariable UUID caseId
+    ) {
+        return ResponseEntity.ok(
+                missionService.getMissionsByCase(caseId)
         );
     }
 

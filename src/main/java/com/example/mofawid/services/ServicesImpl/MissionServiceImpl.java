@@ -24,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -143,6 +144,28 @@ public class MissionServiceImpl implements MissionService {
         return missions.map(
                 missionMapper::toResponseDto
         );
+    }
+
+    @Override
+    public List<MissionResponseDTO> getMissionsByCase(UUID caseId) {
+
+        User currentUser = getCurrentUser();
+
+        UUID tenantId = currentUser.getTenant().getId();
+
+        // Make sure the Case belongs to current tenant
+        caseRepository
+                .findByIdAndTenantId(caseId, tenantId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Case not found")
+                );
+
+        List<Mission> missions =
+                missionRepository.findAllByCaseEntityId(caseId);
+
+        return missions.stream()
+                .map(missionMapper::toResponseDto)
+                .toList();
     }
 
     @Override

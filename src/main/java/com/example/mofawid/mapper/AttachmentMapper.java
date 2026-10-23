@@ -12,6 +12,7 @@ import org.mapstruct.Mapping;
 public interface AttachmentMapper {
 
     @Mapping(source = "caseEntity.id", target = "caseId")
+    @Mapping(source = "mission.id", target = "missionId")
     @Mapping(source = "uploadedBy.id", target = "uploadedById")
     AttachmentResponseDTO toResponseDto(Attachment attachment);
 }

@@ -51,10 +51,37 @@ public class AttachmentController {
         return ResponseEntity.ok(attachments);
     }
 
+    // the collaborateur adds files (photos, pdf, audio...) during his mission
+    @PostMapping("/api/missions/{missionId}/attachments")
+    @PreAuthorize("hasRole('COLLABORATEUR')")
+    public ResponseEntity<AttachmentResponseDTO> uploadToMission(
+            @PathVariable UUID missionId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "caption", required = false) String caption
+    ) {
 
+        AttachmentResponseDTO response =
+                attachmentService.uploadToMission(missionId, file, caption);
 
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/api/missions/{missionId}/attachments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT', 'COLLABORATEUR')")
+    public ResponseEntity<Page<AttachmentResponseDTO>> getMissionAttachments(
+            @PathVariable UUID missionId,
+            Pageable pageable
+    ) {
+
+        Page<AttachmentResponseDTO> attachments =
+                attachmentService.getMissionAttachments(missionId, pageable);
+
+        return ResponseEntity.ok(attachments);
+    }
+
+    // collaborateur: only the files of his own missions (checked in the service)
     @GetMapping("/api/attachments/{attachmentId}/download")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT', 'COLLABORATEUR')")
     public ResponseEntity<byte[]> downloadAttachment(
             @PathVariable UUID attachmentId,
             @RequestParam(name = "inline", defaultValue = "false") boolean inline
@@ -86,8 +113,9 @@ public class AttachmentController {
                 .body(file.content());
     }
 
+    // collaborateur: only the files of his own missions (checked in the service)
     @DeleteMapping("/api/attachments/{attachmentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT', 'COLLABORATEUR')")
     public ResponseEntity<Void> deleteAttachment(
             @PathVariable UUID attachmentId
     ) {

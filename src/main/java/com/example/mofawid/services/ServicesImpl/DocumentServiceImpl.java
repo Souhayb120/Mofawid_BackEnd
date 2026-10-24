@@ -14,6 +14,9 @@ import com.example.mofawid.models.Observation;
 import com.example.mofawid.repositories.MissionRepo;
 import com.example.mofawid.repositories.ObservationRepo;
 import com.example.mofawid.services.AiService;
+import com.example.mofawid.services.ReportPdfService;
+import com.example.mofawid.services.StorageService;
+import com.example.mofawid.DTO.AttachmentDTO.AttachmentDownloadDTO;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,6 +54,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final PartyRepo partyRepository;
     private final DeliveryAttemptRepo deliveryAttemptRepository;
     private final AttachmentRepository attachmentRepository;
+    private final ReportPdfService reportPdfService;
+    private final StorageService storageService;
 
     public DocumentServiceImpl(
             MissionRepo missionRepository, ObservationRepo observationRepository, AiService aiService, DocumentRepo documentRepository,
@@ -59,8 +64,12 @@ public class DocumentServiceImpl implements DocumentService {
             DocumentMapper documentMapper, DocumentPromptFactory documentPromptFactory,
             PartyRepo partyRepository,
             DeliveryAttemptRepo deliveryAttemptRepository,
-            AttachmentRepository attachmentRepository
+            AttachmentRepository attachmentRepository,
+            ReportPdfService reportPdfService,
+            StorageService storageService
     ) {
+        this.reportPdfService = reportPdfService;
+        this.storageService = storageService;
         this.partyRepository = partyRepository;
         this.deliveryAttemptRepository = deliveryAttemptRepository;
         this.attachmentRepository = attachmentRepository;
@@ -293,8 +302,8 @@ public class DocumentServiceImpl implements DocumentService {
         }
         attempts.sort(Comparator.comparing(DeliveryAttempt::getAttemptedAt));
 
-        List<Attachment> attachments =
-                attachmentRepository.findAllByCaseEntityIdOrderByUploadedAtAsc(caseId);
+        // only photos / PDF are "الصورة رقم N" (not the audio files of the missions)
+        List<Attachment> attachments = printableAttachments(caseId);
 
         checkDataForKind(kind, parties, attempts, observations);
 
@@ -479,11 +488,95 @@ public class DocumentServiceImpl implements DocumentService {
 
         caseRepository.save(caseEntity);
 
-        Document updatedDocument =
-                documentRepository.save(document);
+        // the official PDF is made now (letterhead + text + photos) and kept in R2
+        String pdfKey = createPdf(document);
+
+        Document updatedDocument;
+        try {
+            updatedDocument = documentRepository.saveAndFlush(document);
+        } catch (RuntimeException e) {
+            // the DB rollback can't remove the file from R2, so we delete it ourselves
+            storageService.delete(pdfKey);
+            throw e;
+        }
 
         return documentMapper.toResponseDto(
                 updatedDocument
         );
+    }
+
+    @Transactional
+    @Override
+    public AttachmentDownloadDTO downloadPdf(UUID documentId) {
+
+        User currentUser = getCurrentUser();
+
+        UUID tenantId =
+                currentUser.getTenant().getId();
+
+        Document document = documentRepository
+                .findByIdAndCaseEntityTenantId(
+                        documentId,
+                        tenantId
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Document not found")
+                );
+
+        if (document.getStatus() != DocumentStatus.APPROVED) {
+            throw new BadRequestException(
+                    "Only an approved document has a PDF"
+            );
+        }
+
+        // documents approved before the PDF existed: we make it the first time
+        if (document.getPdfStorageKey() == null) {
+            createPdf(document);
+            documentRepository.save(document);
+        }
+
+        byte[] content =
+                storageService.download(document.getPdfStorageKey());
+
+        // ex: محضر-2026-2528.pdf
+        String fileName = "محضر-"
+                + document.getCaseEntity().getRef().replace("/", "-")
+                + ".pdf";
+
+        return new AttachmentDownloadDTO(
+                content,
+                "application/pdf",
+                fileName
+        );
+    }
+
+    private String createPdf(Document document) {
+
+        Case caseEntity = document.getCaseEntity();
+
+        byte[] pdf = reportPdfService.buildPdf(
+                document,
+                printableAttachments(caseEntity.getId())
+        );
+
+        String storageKey =
+                "tenants/" + caseEntity.getTenant().getId() +
+                        "/cases/" + caseEntity.getId() +
+                        "/documents/" + document.getId() + ".pdf";
+
+        storageService.uploadBytes(pdf, storageKey, "application/pdf");
+        document.setPdfStorageKey(storageKey);
+
+        return storageKey;
+    }
+
+    // the files of the case in upload order, only the ones printed in the report
+    private List<Attachment> printableAttachments(UUID caseId) {
+
+        return attachmentRepository
+                .findAllByCaseEntityIdOrderByUploadedAtAsc(caseId)
+                .stream()
+                .filter(ReportPdfService::isPrintable)
+                .toList();
     }
 }

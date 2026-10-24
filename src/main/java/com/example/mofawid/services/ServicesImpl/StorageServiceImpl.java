@@ -80,6 +80,23 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
+    public String uploadBytes(byte[] content, String storageKey, String contentType) {
+
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(storageKey)
+                .contentType(contentType)
+                .build();
+
+        s3Client.putObject(
+                request,
+                RequestBody.fromBytes(content)
+        );
+
+        return storageKey;
+    }
+
+    @Override
     public byte[] download(String storageKey) {
 
         GetObjectRequest request = GetObjectRequest.builder()

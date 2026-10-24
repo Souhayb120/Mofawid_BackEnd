@@ -1,15 +1,20 @@
 package com.example.mofawid.controllers;
 
+import com.example.mofawid.DTO.AttachmentDTO.AttachmentDownloadDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentRequestDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentResponseDTO;
 import com.example.mofawid.Enums.DocumentKind;
 import com.example.mofawid.services.DocumentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @RestController
@@ -115,5 +120,27 @@ public class DocumentController {
         return ResponseEntity.ok(
                 documentService.approveDocument(id)
         );
+    }
+
+    // the PDF of the approved report (?inline=true to open it in the browser)
+    @GetMapping("/api/documents/{id}/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    public ResponseEntity<byte[]> downloadPdf(
+            @PathVariable UUID id,
+            @RequestParam(name = "inline", defaultValue = "false") boolean inline
+    ) {
+
+        AttachmentDownloadDTO file =
+                documentService.downloadPdf(id);
+
+        ContentDisposition disposition = ContentDisposition
+                .builder(inline ? "inline" : "attachment")
+                .filename(file.originalName(), StandardCharsets.UTF_8)
+                .build();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .body(file.content());
     }
 }

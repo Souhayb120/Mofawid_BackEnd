@@ -1,5 +1,6 @@
 package com.example.mofawid.services;
 
+import com.example.mofawid.DTO.AttachmentDTO.AttachmentDownloadDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentRequestDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentResponseDTO;
 import com.example.mofawid.Enums.DocumentKind;
@@ -37,4 +38,7 @@ public interface DocumentService {
     DocumentResponseDTO submitForApproval(UUID documentId);
 
     DocumentResponseDTO approveDocument(UUID documentId);
+
+    // the official PDF of an approved document (letterhead + text + photos)
+    AttachmentDownloadDTO downloadPdf(UUID documentId);
 }

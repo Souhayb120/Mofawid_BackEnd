@@ -41,4 +41,7 @@ public class Document {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by")
     private User approvedBy;
+
+    // the official PDF of the report, made once when the document is approved (key in R2)
+    private String pdfStorageKey;
 }

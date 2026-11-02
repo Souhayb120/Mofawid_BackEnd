@@ -45,8 +45,9 @@ public class MissionController {
     }
 
     // the missions of one case (tab "Missions" of the case page)
+    // the assistant can read them too: he prepares the documents of the case
     @GetMapping("/by-case/{caseId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
     public ResponseEntity<List<MissionResponseDTO>> getMissionsByCase(
             @PathVariable UUID caseId
     ) {

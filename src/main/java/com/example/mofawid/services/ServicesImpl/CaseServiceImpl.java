@@ -3,15 +3,19 @@ package com.example.mofawid.services.ServicesImpl;
 import com.example.mofawid.DTO.CaseDTO.CaseRequestDTO;
 import com.example.mofawid.DTO.CaseDTO.CaseResponseDTO;
 import com.example.mofawid.Enums.CaseStatus;
+import com.example.mofawid.Enums.DocumentStatus;
+import com.example.mofawid.exceptions.BadRequestException;
 import com.example.mofawid.mapper.CaseMapper;
+import com.example.mofawid.models.Attachment;
 import com.example.mofawid.models.Case;
+import com.example.mofawid.models.Mission;
 import com.example.mofawid.models.Tenant;
 import com.example.mofawid.models.User;
-import com.example.mofawid.repositories.CaseRepo;
-import com.example.mofawid.repositories.PartyRepo;
-import com.example.mofawid.repositories.UserRepo;
+import com.example.mofawid.repositories.*;
 import com.example.mofawid.services.CaseService;
+import com.example.mofawid.services.StorageService;
 import com.example.mofawid.exceptions.ResourceNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,8 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Year;
+import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class CaseServiceImpl implements CaseService {
 
@@ -29,17 +35,41 @@ public class CaseServiceImpl implements CaseService {
     private final CaseMapper caseMapper;
     private final UserRepo userRepository;
     private final PartyRepo partyRepository;
+    private final MissionRepo missionRepository;
+    private final ObservationRepo observationRepository;
+    private final DeliveryAttemptRepo deliveryAttemptRepository;
+    private final AttachmentRepository attachmentRepository;
+    private final DocumentRepo documentRepository;
+    private final BillingRepo billingRepository;
+    private final CaseTrackingRepo caseTrackingRepository;
+    private final StorageService storageService;
 
     public CaseServiceImpl(
             CaseRepo caseRepository,
             CaseMapper caseMapper,
             UserRepo userRepository,
-            PartyRepo partyRepository
+            PartyRepo partyRepository,
+            MissionRepo missionRepository,
+            ObservationRepo observationRepository,
+            DeliveryAttemptRepo deliveryAttemptRepository,
+            AttachmentRepository attachmentRepository,
+            DocumentRepo documentRepository,
+            BillingRepo billingRepository,
+            CaseTrackingRepo caseTrackingRepository,
+            StorageService storageService
     ) {
         this.caseRepository = caseRepository;
         this.caseMapper = caseMapper;
         this.userRepository = userRepository;
         this.partyRepository = partyRepository;
+        this.missionRepository = missionRepository;
+        this.observationRepository = observationRepository;
+        this.deliveryAttemptRepository = deliveryAttemptRepository;
+        this.attachmentRepository = attachmentRepository;
+        this.documentRepository = documentRepository;
+        this.billingRepository = billingRepository;
+        this.caseTrackingRepository = caseTrackingRepository;
+        this.storageService = storageService;
     }
 
     @Transactional
@@ -184,12 +214,48 @@ public class CaseServiceImpl implements CaseService {
                         new ResourceNotFoundException("Case not found")
                 );
 
-        // delete the parties of the case first (foreign key)
+        // an approved document is an official PV: the case must be kept
+        if (documentRepository.existsByCaseEntityIdAndStatus(id, DocumentStatus.APPROVED)) {
+            throw new BadRequestException("This case has an approved document, it can not be deleted");
+        }
+
+        // delete the children first (foreign keys), the deepest ones first
+
+        // 1. the files (mission files too: they all have the case)
+        List<Attachment> attachments =
+                attachmentRepository.findAllByCaseEntityIdOrderByUploadedAtAsc(id);
+        attachmentRepository.deleteAll(attachments);
+
+        // 2. the missions with their visits and observations
+        List<Mission> missions = missionRepository.findAllByCaseEntityId(id);
+        for (Mission mission : missions) {
+            observationRepository.deleteAll(
+                    observationRepository.findAllByMissionId(mission.getId())
+            );
+            deliveryAttemptRepository.deleteAll(
+                    deliveryAttemptRepository.findAllByMissionIdOrderByAttemptedAtAsc(mission.getId())
+            );
+        }
+        missionRepository.deleteAll(missions);
+
+        // 3. the documents, the billing, the tracking code and the parties
+        documentRepository.deleteAll(documentRepository.findAllByCaseEntityId(id));
+        billingRepository.findByCaseEntityId(id).ifPresent(billingRepository::delete);
+        caseTrackingRepository.findByCaseEntityId(id).ifPresent(caseTrackingRepository::delete);
         partyRepository.deleteAll(
                 partyRepository.findAllByCaseEntityId(id)
         );
 
         caseRepository.delete(caseEntity);
+
+        // 4. the files in the storage (R2): if one fails, the case is still deleted
+        for (Attachment attachment : attachments) {
+            try {
+                storageService.delete(attachment.getStorageKey());
+            } catch (Exception e) {
+                log.warn("File {} could not be deleted from the storage: {}", attachment.getStorageKey(), e.getMessage());
+            }
+        }
     }
 
     private User getCurrentUser() {

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,6 +20,12 @@ public interface DocumentRepo extends JpaRepository<Document, UUID> {
             UUID caseId,
             Pageable pageable
     );
+
+    // all the documents of one case (used when the case is deleted)
+    List<Document> findAllByCaseEntityId(UUID caseId);
+
+    // true if the case has an official (approved) document
+    boolean existsByCaseEntityIdAndStatus(UUID caseId, DocumentStatus status);
 
     Optional<Document> findByIdAndCaseEntityTenantId(
             UUID id,

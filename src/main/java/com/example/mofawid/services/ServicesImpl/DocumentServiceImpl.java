@@ -18,6 +18,8 @@ import com.example.mofawid.services.ReportPdfService;
 import com.example.mofawid.services.StorageService;
 import com.example.mofawid.DTO.AttachmentDTO.AttachmentDownloadDTO;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +36,7 @@ import com.example.mofawid.exceptions.BadRequestException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -177,6 +180,95 @@ public class DocumentServiceImpl implements DocumentService {
         return documents.map(
                 documentMapper::toResponseDto
         );
+    }
+
+    @Override
+    public Page<DocumentResponseDTO> searchDocuments(
+            int page,
+            int size,
+            String search,
+            DocumentKind kind,
+            DocumentStatus status,
+            LocalDate fromDate,
+            LocalDate toDate,
+            String sortBy,
+            String direction
+    ) {
+
+        User currentUser = getCurrentUser();
+
+        UUID tenantId =
+                currentUser.getTenant().getId();
+
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new BadRequestException("The start date must be before the end date");
+        }
+
+        // empty search = no filter, else "%text%" for the LIKE
+        String searchPattern = null;
+        if (search != null && !search.isBlank()) {
+            searchPattern = "%" + search.trim().toLowerCase() + "%";
+        }
+
+        // the dates are days in Morocco: from = start of the day, to = start of the next day
+        ZoneId zone = ZoneId.of("Africa/Casablanca");
+        Instant from = null;
+        if (fromDate != null) {
+            from = fromDate.atStartOfDay(zone).toInstant();
+        }
+        Instant to = null;
+        if (toDate != null) {
+            to = toDate.plusDays(1).atStartOfDay(zone).toInstant();
+        }
+
+        // never more than 100 documents in one page
+        int pageSize = Math.min(Math.max(size, 1), 100);
+
+        Pageable pageable =
+                PageRequest.of(Math.max(page, 0), pageSize, toSort(sortBy, direction));
+
+        Page<Document> documents =
+                documentRepository.searchDocuments(
+                        tenantId,
+                        kind,
+                        status,
+                        searchPattern,
+                        from,
+                        to,
+                        pageable
+                );
+
+        return documents.map(
+                documentMapper::toResponseDto
+        );
+    }
+
+    // only these columns can be sorted (the client can not send any field name)
+    private Sort toSort(String sortBy, String direction) {
+
+        Sort.Direction dir = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        if (sortBy == null) {
+            return Sort.by(dir, "createdAt");
+        }
+
+        switch (sortBy) {
+            case "approvedAt":
+                return Sort.by(dir, "approvedAt");
+            case "kind":
+                return Sort.by(dir, "kind");
+            case "status":
+                return Sort.by(dir, "status");
+            case "clientName":
+                return Sort.by(dir, "caseEntity.clientName");
+            case "caseRef":
+                // "2026/10" must come after "2026/9": sort by year then number
+                return Sort.by(dir, "caseEntity.registerYear", "caseEntity.registerNumber");
+            default:
+                return Sort.by(dir, "createdAt");
+        }
     }
 
     @Transactional

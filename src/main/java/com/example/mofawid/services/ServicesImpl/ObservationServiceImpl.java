@@ -2,7 +2,13 @@ package com.example.mofawid.services.ServicesImpl;
 
 import com.example.mofawid.DTO.ObservationDTO.ObservationRequestDTO;
 import com.example.mofawid.DTO.ObservationDTO.ObservationResponseDTO;
+import com.example.mofawid.DTO.ObservationDTO.TranscriptionResponseDTO;
 import com.example.mofawid.Enums.Role;
+import com.example.mofawid.exceptions.BadRequestException;
+import com.example.mofawid.services.AiService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import com.example.mofawid.mapper.ObservationMapper;
 import com.example.mofawid.models.Mission;
 import com.example.mofawid.models.Observation;
@@ -22,24 +28,31 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class ObservationServiceImpl implements ObservationService {
+
+    // a recording of about 5 minutes is less than 5 MB, 15 MB is a safe limit
+    private static final long MAX_AUDIO_SIZE = 15L * 1024 * 1024;
 
     private final ObservationRepo observationRepository;
     private final MissionRepo missionRepository;
     private final UserRepo userRepository;
     private final ObservationMapper observationMapper;
+    private final AiService aiService;
 
     public ObservationServiceImpl(
             ObservationRepo observationRepository,
             MissionRepo missionRepository,
             UserRepo userRepository,
-            ObservationMapper observationMapper
+            ObservationMapper observationMapper,
+            AiService aiService
     ) {
         this.observationRepository = observationRepository;
         this.missionRepository = missionRepository;
         this.userRepository = userRepository;
         this.observationMapper = observationMapper;
+        this.aiService = aiService;
     }
 
     @Transactional
@@ -135,6 +148,73 @@ public class ObservationServiceImpl implements ObservationService {
         return observations.map(
                 observationMapper::toResponseDto
         );
+    }
+
+    @Override
+    public TranscriptionResponseDTO transcribeAudio(
+            UUID missionId,
+            MultipartFile audio
+    ) {
+
+        User currentUser = getCurrentUser();
+
+        UUID tenantId =
+                currentUser.getTenant().getId();
+
+        // Check mission belongs to current tenant
+        Mission mission = missionRepository
+                .findByIdAndCaseEntityTenantId(
+                        missionId,
+                        tenantId
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Mission not found")
+                );
+
+        // same rule as createObservation: only the collaborateur of the mission
+        if (!mission.getAssignedTo()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new ForbiddenException(
+                    "You are not assigned to this mission"
+            );
+        }
+
+        if (audio == null || audio.isEmpty()) {
+            throw new BadRequestException("The recording is empty");
+        }
+
+        if (audio.getSize() > MAX_AUDIO_SIZE) {
+            throw new BadRequestException("The recording is too long (max 15 MB)");
+        }
+
+        // "audio/webm;codecs=opus" -> "audio/webm"
+        String mimeType = audio.getContentType();
+        if (mimeType != null && mimeType.contains(";")) {
+            mimeType = mimeType.substring(0, mimeType.indexOf(";"));
+        }
+        if (mimeType == null || !mimeType.trim().startsWith("audio/")) {
+            throw new BadRequestException("Only audio files can be transcribed");
+        }
+
+        byte[] bytes;
+        try {
+            bytes = audio.getBytes();
+        } catch (IOException e) {
+            throw new BadRequestException("Could not read the recording");
+        }
+
+        String text;
+        try {
+            text = aiService.transcribe(bytes, mimeType.trim());
+        } catch (RuntimeException e) {
+            log.error("Audio transcription failed for mission {}", missionId, e);
+            throw new BadRequestException("Could not transcribe the recording, please try again");
+        }
+
+        // nobody spoke = empty text (the front shows a message)
+        return new TranscriptionResponseDTO(text == null ? "" : text.trim());
     }
 
     private User getCurrentUser() {

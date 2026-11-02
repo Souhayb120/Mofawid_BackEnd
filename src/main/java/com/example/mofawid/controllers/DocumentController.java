@@ -4,9 +4,11 @@ import com.example.mofawid.DTO.AttachmentDTO.AttachmentDownloadDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentRequestDTO;
 import com.example.mofawid.DTO.DocumentDTO.DocumentResponseDTO;
 import com.example.mofawid.Enums.DocumentKind;
+import com.example.mofawid.Enums.DocumentStatus;
 import com.example.mofawid.services.DocumentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -55,6 +58,36 @@ public class DocumentController {
         );
     }
 
+
+    // all the documents of the office (search by case ref / client / subject, filters and sort)
+    // ex: /api/documents?search=2026&kind=NOTIFICATION&status=APPROVED&sortBy=createdAt&direction=desc
+    @GetMapping("/api/documents")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+    public ResponseEntity<Page<DocumentResponseDTO>> searchDocuments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) DocumentKind kind,
+            @RequestParam(required = false) DocumentStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction
+    ) {
+        return ResponseEntity.ok(
+                documentService.searchDocuments(
+                        page,
+                        size,
+                        search,
+                        kind,
+                        status,
+                        from,
+                        to,
+                        sortBy,
+                        direction
+                )
+        );
+    }
 
     @GetMapping("/api/documents/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")

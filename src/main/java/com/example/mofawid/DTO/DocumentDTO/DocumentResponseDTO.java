@@ -16,6 +16,8 @@ public class DocumentResponseDTO {
 
     private String caseRef;
 
+    private String caseClientName;
+
     private DocumentKind kind;
 
     private DocumentStatus status;

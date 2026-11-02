@@ -15,6 +15,7 @@ public interface DocumentMapper {
 
     @Mapping(source = "caseEntity.id", target = "caseId")
     @Mapping(source = "caseEntity.ref", target = "caseRef")
+    @Mapping(source = "caseEntity.clientName", target = "caseClientName")
     @Mapping(source = "approvedBy.username", target = "approvedByUsername")
     DocumentResponseDTO toResponseDto(Document document);
 }
